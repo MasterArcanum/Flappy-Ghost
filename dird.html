@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -13,13 +12,15 @@
             background: #ececec;
             margin: 0;
             overflow: hidden;
+            position: relative;
         }
         canvas {
             border: 1px solid #000;
+            z-index: 1;
         }
         .restart-button {
             position: absolute;
-            top: 50%;
+            top: 60%;
             left: 50%;
             transform: translate(-50%, -50%);
             padding: 10px 20px;
@@ -31,78 +32,81 @@
             border-radius: 4px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             transition: background-color 0.3s ease;
+            z-index: 2;
         }
         .restart-button:hover {
             background-color: #45a049;
+        }
+        #explosion {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(255,165,0,1) 0%, rgba(255,0,0,1) 60%, rgba(0,0,0,0) 80%);
+            border-radius: 50%;
+            animation: explode 0.5s ease-out forwards;
+            display: none;
+            z-index: 2;
+        }
+        @keyframes explode {
+            from {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+            to {
+                transform: scale(3);
+                opacity: 0;
+            }
         }
     </style>
 </head>
 <body>
    <canvas id="game"></canvas>
+   <div id="explosion"></div>
     <script>
         const cvs = document.getElementById("game");
         cvs.width = window.innerWidth;
         cvs.height = window.innerHeight;
         const ctx = cvs.getContext("2d");
 
-        // Bird parameters
+        // Параметры призрака
         let birdY = cvs.height / 2;
         const birdHeight = 100;
         const birdWidth = 110;
         let gravity = 1;
 
-        // Load bird image
+        // Загрузка изображения призрака
         const birdImage = new Image();
         birdImage.src = "ghost.png";
 
+        // Изображения для фона
+        const bgImages = ["background_1.png", "background_2.jpg", "background_3.jpg", "background_4.png", "background_5.jpg"];
+        let bgImageIndex = 0;
 
-/*
-       // Load background image
+        // Загрузить изначальное изображение фона
         const bgImage = new Image();
-        bgImage.src = "background_1.png";
-        bgImage.onload = function() {
-            drawBackground(this);
+        bgImage.src = bgImages[bgImageIndex];
+
+        // Функция для обновления изображения фона
+        function updateBackground() {
+            bgImageIndex = (bgImageIndex + 1) % bgImages.length;
+            bgImage.src = bgImages[bgImageIndex];
         }
 
+        // Установить интервал для обновления фона каждые 120 секунд
+        setInterval(updateBackground, 120000);
 
-*/
-        const bgImages = ["background_1.png", "background_2.jpg", "background_3.jpg", "background_4.png", "background_5.jpg"]; // Изображения для фона
-let bgImageIndex = 0; // Индекс текущего изображения
-
-// Загрузить изначальное изображение
-const bgImage = new Image();
-bgImage.src = bgImages[bgImageIndex];
-
-// Функция для обновления изображения фона
-function updateBackground() {
-    bgImageIndex = (bgImageIndex + 1) % bgImages.length; // Обновить индекс изображения
-    bgImage.src = bgImages[bgImageIndex]; // Загрузить новое изображение
-}
-
-// Установить интервал для обновления изображения фона каждые 120 секунд
-setInterval(updateBackground, 120000);
-
-    
-        function drawBackground(image) {
-            const scaleX = cvs.width / image.width;
-            const scaleY = cvs.height / image.height;
-            const scale = Math.max(scaleX, scaleY);
-            const width = image.width * scale;
-            const height = image.height * scale;
-            const x = (cvs.width - width) / 2;
-            const y = (cvs.height - height) / 2;
-
-            ctx.drawImage(image, 0, 0, image.width, image.height, x, y, width, height);
+        function drawBackground() {
+            ctx.drawImage(bgImage, bgX, 0, cvs.width, cvs.height);
+            ctx.drawImage(bgImage, bgX + cvs.width, 0, cvs.width, cvs.height);
         }
-        
 
-        // Load pipe image
+        // Загрузка изображения трубы
         const pipeImage = new Image();
         pipeImage.src = "pipe.png";
 
         let bgX = 0;
 
-        // Pipe parameters
+        // Параметры трубы
         let pipeWidth = 180;
         let minPipeHeight = 90;
         let pipeDistance = 180;
@@ -110,7 +114,7 @@ setInterval(updateBackground, 120000);
         let pipeHeight = Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1) + minPipeHeight);
         let pipeX = cvs.width;
 
-        // Score
+        // Счет
         let score = 0;
         let highScore = 0;
 
@@ -120,21 +124,17 @@ setInterval(updateBackground, 120000);
             ctx.drawImage(birdImage, cvs.width / 2, birdY, birdWidth, birdHeight);
         }
 
-        function drawBackground() {
-            ctx.drawImage(bgImage, bgX, 0, cvs.width, cvs.height);
-            ctx.drawImage(bgImage, bgX + cvs.width, 0, cvs.width, cvs.height);
-        }
-
         function drawPipe() {
-            // Save the context's state
+            // Сохранить состояние контекста
             ctx.save();
-            // Flip the context along the horizontal axis
+            // Отразить контекст по вертикали
             ctx.scale(1, -1);
-            // Draw the upper pipe, but note that the position is negated because of the flipped context
+            // Нарисовать верхнюю трубу (учитывая отражение)
             ctx.drawImage(pipeImage, pipeX, -pipeHeight, pipeWidth, pipeHeight);
-            // Restore the context's state to prevent the flipping from affecting other drawings
+            // Восстановить состояние контекста
             ctx.restore();
 
+            // Нарисовать нижнюю трубу
             ctx.drawImage(pipeImage, pipeX, pipeHeight + pipeDistance, pipeWidth, cvs.height - pipeHeight - pipeDistance);
         }
 
@@ -145,64 +145,65 @@ setInterval(updateBackground, 120000);
             ctx.fillText("High Score: " + highScore, 10, cvs.height - 40);
         }
 
-       
+        let pipeSpeed = 1;
+        let passedPipe = false;
 
-let pipeSpeed = 1; // добавьте эту строку с другими переменными
+        const explosionDiv = document.getElementById("explosion");
 
-let passedPipe = false;  // добавьте это к другим переменным
+        function move() {
+            if (gameOver) return;
 
-let pipes = [{
-    x: cvs.width,
-    height: Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1) + minPipeHeight)
-}];
+            birdY += gravity;
+            pipeX -= pipeSpeed;
+            bgX -= 2; 
 
+            if (bgX <= -cvs.width) bgX = 0;
 
-function move() {
-    if (gameOver) return;
+            if (pipeX + pipeWidth < 0) {
+                pipeX = cvs.width - 100;
+                pipeHeight = Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1) + minPipeHeight);
+                passedPipe = false;
+            }
 
-    birdY += gravity;
-    pipeX -= pipeSpeed;
-    bgX -= 2; 
+            // Проверка столкновения
+            if (birdY < pipeHeight || birdY > pipeHeight + pipeDistance) {
+                if (cvs.width / 2 > pipeX && cvs.width / 2 < pipeX + pipeWidth) {
+                    gameOver = true;
+                    // Показать взрыв
+                    explosionDiv.style.left = (cvs.width / 2 - 50) + 'px';
+                    explosionDiv.style.top = (birdY - 25) + 'px';
+                    explosionDiv.style.display = 'block';
+                }
+            }
 
-    if (bgX <= -cvs.width) bgX = 0;
+            if (birdY > cvs.height || birdY < 0) {
+                gameOver = true;
+                // Показать взрыв
+                explosionDiv.style.left = (cvs.width / 2 - 50) + 'px';
+                explosionDiv.style.top = (birdY - 25) + 'px';
+                explosionDiv.style.display = 'block';
+            }
 
-    if (pipeX + pipeWidth < 0) {
-        pipeX = cvs.width-100;
-        pipeHeight = Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1) + minPipeHeight);
-        passedPipe = false;  // сбросить значение passedPipe
-    }
+            if (!passedPipe && pipeX + pipeWidth < cvs.width / 2) {
+                score++;
+                passedPipe = true;
+                if (score > highScore) {
+                    highScore = score;
+                }
 
-    if (birdY < pipeHeight || birdY > pipeHeight + pipeDistance) {
-        if (cvs.width / 2 > pipeX && cvs.width / 2 < pipeX + pipeWidth) {
-            gameOver = true;
+                // Усложнение игры с каждой пройденной трубой
+                gravity += 0.1;
+                if (pipeDistance > 50) {
+                    pipeDistance -= 2;
+                }
+                if (minPipeHeight < cvs.height / 2) {
+                    minPipeHeight += 0.5;
+                }
+                maxPipeHeight = cvs.height - pipeDistance - minPipeHeight;
+
+                pipeSpeed += 1;
+            }
         }
-    }
-
-    if (birdY > cvs.height || birdY < 0) {
-        gameOver = true;
-    }
-
-    if (!passedPipe && pipeX + pipeWidth < cvs.width / 2) {  // изменить условие
-        score++;
-        passedPipe = true;  // установить значение passedPipe в true
-        if (score > highScore) {
-            highScore = score;
-        }
-
-        // Усложнение игры с каждой пройденной трубой
-        gravity += 0.1;
-        if (pipeDistance > 50) {
-            pipeDistance -= 2;
-        }
-        if (minPipeHeight < cvs.height / 2) {
-            minPipeHeight += 0.5;
-        }
-        maxPipeHeight = cvs.height - pipeDistance - minPipeHeight;
-
-        pipeSpeed += 1;
-    }
-}
-
 
         function jump(event) {
             if (event.code === "Space" && !gameOver) {
@@ -216,13 +217,21 @@ function move() {
                 score = 0;
                 birdY = cvs.height / 2;
                 pipeX = cvs.width;
+                gravity = 1;
+                pipeSpeed = 1;
+                pipeDistance = 180;
+                minPipeHeight = 90;
+                maxPipeHeight = cvs.height - pipeDistance - minPipeHeight;
+                explosionDiv.style.display = 'none';
                 removeRestartButton();
             }
         }
 
         function removeRestartButton() {
             const restartButton = document.getElementById("restart-button");
-            restartButton.parentNode.removeChild(restartButton);
+            if (restartButton) {
+                restartButton.parentNode.removeChild(restartButton);
+            }
         }
 
         function update() {
@@ -236,8 +245,9 @@ function move() {
             if (gameOver) {
                 ctx.font = "40px Arial";
                 ctx.fillStyle = "white";
-                ctx.fillText("Game Over", cvs.width / 2 - 100, cvs.height / 2 - 50);
-                ctx.fillText("Your Score: " + score, cvs.width / 2 - 120, cvs.height / 2 + 80);
+                ctx.textAlign = "center";
+                ctx.fillText("Game Over", cvs.width / 2, cvs.height / 2 - 50);
+                ctx.fillText("Your Score: " + score, cvs.width / 2, cvs.height / 2 + 80);
 
                 if (!document.getElementById("restart-button")) {
                     const restartButton = document.createElement("button");
@@ -250,13 +260,9 @@ function move() {
             }
         }
 
+        // Запуск игрового цикла
         setInterval(update, 20);
         window.addEventListener("keydown", jump);
-
-
-
-
-
     </script>
 </body>
 </html>
